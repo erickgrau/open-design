@@ -166,16 +166,29 @@ function sanitizeZipPath(name: string): string {
   return validateProjectPath(name);
 }
 
+// Static-export error pages ship alongside the real pages of an export
+// but are never a sensible landing page — auto-opening one drops the
+// user straight onto a "page not found" screen (the exact symptom that
+// motivated this guard). Matched on the basename so `errors/404.html`
+// is caught as well as a top-level `404.html`.
+const ERROR_PAGE_BASENAMES = new Set(['404.html', '404.htm', '500.html', '500.htm']);
+
+function isErrorPage(p: string): boolean {
+  const base = p.toLowerCase().split('/').pop() ?? '';
+  return ERROR_PAGE_BASENAMES.has(base);
+}
+
 function chooseEntryFile(paths: string[]): string | null {
   const html = paths.filter((p) => /\.html?$/i.test(p));
   if (html.length === 0) return null;
   const lower = new Map(html.map((p) => [p.toLowerCase(), p]));
-  return (
-    lower.get('index.html') ??
-    html.find((p) => !p.includes('/')) ??
-    html[0] ??
-    null
-  );
+  const indexMatch = lower.get('index.html');
+  if (indexMatch) return indexMatch;
+  // Prefer any real page over a 404/500 error page; only fall back to
+  // an error page when the export genuinely contains nothing else.
+  const real = html.filter((p) => !isErrorPage(p));
+  const pool = real.length > 0 ? real : html;
+  return pool.find((p) => !p.includes('/')) ?? pool[0] ?? null;
 }
 
 function safeJoin(root: string, relPath: string): string {

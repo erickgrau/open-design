@@ -174,3 +174,65 @@ describe('importClaudeDesignZip', () => {
     }
   });
 });
+
+describe('importClaudeDesignZip entry-file selection', () => {
+  // Red spec for the real-world report: a Claude Design export with no
+  // index.html but a `404.html` (which sorts first among top-level
+  // files) had the importer auto-open the 404 page as the project
+  // entry. An error page must never be the chosen entry when a real
+  // page exists.
+  it('does not pick 404.html as the entry file when a real page exists', async () => {
+    // 404.html is passed first so it would win the "first top-level
+    // HTML file" rule on the unfixed code.
+    const zip = buildZip([
+      { name: '404.html', body: Buffer.from('<html>not found</html>') },
+      { name: 'home.html', body: Buffer.from('<html>home</html>') },
+    ]);
+    const tmp = mkdtempSync(path.join(os.tmpdir(), 'cd-import-'));
+    const zipPath = path.join(tmp, 'in.zip');
+    const projectDir = path.join(tmp, 'proj');
+    writeFileSync(zipPath, zip);
+    try {
+      const result = await importClaudeDesignZip(zipPath, projectDir);
+      expect(result.entryFile).toBe('home.html');
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it('still falls back to 404.html when it is the only HTML file', async () => {
+    // Degenerate case: the guard must not return null / crash when an
+    // error page is genuinely all the export ships.
+    const zip = buildZip([
+      { name: '404.html', body: Buffer.from('<html>not found</html>') },
+      { name: 'styles.css', body: Buffer.from('body{}') },
+    ]);
+    const tmp = mkdtempSync(path.join(os.tmpdir(), 'cd-import-'));
+    const zipPath = path.join(tmp, 'in.zip');
+    const projectDir = path.join(tmp, 'proj');
+    writeFileSync(zipPath, zip);
+    try {
+      const result = await importClaudeDesignZip(zipPath, projectDir);
+      expect(result.entryFile).toBe('404.html');
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it('still prefers index.html even when a 404.html sorts ahead of it', async () => {
+    const zip = buildZip([
+      { name: '404.html', body: Buffer.from('<html>not found</html>') },
+      { name: 'index.html', body: Buffer.from('<html>home</html>') },
+    ]);
+    const tmp = mkdtempSync(path.join(os.tmpdir(), 'cd-import-'));
+    const zipPath = path.join(tmp, 'in.zip');
+    const projectDir = path.join(tmp, 'proj');
+    writeFileSync(zipPath, zip);
+    try {
+      const result = await importClaudeDesignZip(zipPath, projectDir);
+      expect(result.entryFile).toBe('index.html');
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+});
