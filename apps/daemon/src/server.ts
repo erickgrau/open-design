@@ -1904,6 +1904,23 @@ function handleProjectUpload(req, res, next) {
   });
 }
 
+// `/api/import/claude-design` mounts a single-file upload. A MulterError
+// raised by the bare `importUpload.single('file')` middleware (oversize
+// zip past the 100 MB limit, an unexpected field name, etc.) is thrown
+// before the route handler runs, so the handler's own try/catch never
+// sees it — it would fall through to Express' default error handler and
+// reply with an HTML 500 page. This wrapper routes those errors through
+// sendMulterError so the caller gets the same structured JSON envelope
+// every other daemon route returns, mirroring handleProjectUpload.
+function handleImportUpload(req, res, next) {
+  importUpload.single('file')(req, res, (err) => {
+    if (err) {
+      return sendMulterError(res, err);
+    }
+    next();
+  });
+}
+
 function sendMulterError(res, err) {
   if (err instanceof multer.MulterError) {
     const code = err.code || 'UPLOAD_ERROR';
@@ -2779,7 +2796,7 @@ export async function startServer({
   };
   const nodeDeps = { fs, path };
   const idDeps = { randomId, randomUUID };
-  const uploadDeps = { upload, importUpload, handleProjectUpload };
+  const uploadDeps = { upload, importUpload, handleProjectUpload, handleImportUpload };
   const projectStoreDeps = {
     getProject,
     insertProject,
