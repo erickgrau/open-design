@@ -12,7 +12,7 @@ export interface RegisterImportRoutesDeps extends RouteDeps<'db' | 'http' | 'upl
 export function registerImportRoutes(app: Express, ctx: RegisterImportRoutesDeps) {
   const { db } = ctx;
   const { sendApiError } = ctx.http;
-  const { importUpload } = ctx.uploads;
+  const { handleImportUpload } = ctx.uploads;
   const { fs, path } = ctx.node;
   const { randomId } = ctx.ids;
   const { PROJECTS_DIR, RUNTIME_DATA_DIR_CANONICAL } = ctx.paths;
@@ -29,7 +29,7 @@ export function registerImportRoutes(app: Express, ctx: RegisterImportRoutesDeps
   const { setTabs } = ctx.projectFiles;
   app.post(
     '/api/import/claude-design',
-    importUpload.single('file'),
+    handleImportUpload,
     async (req, res) => {
       try {
         if (!req.file)
