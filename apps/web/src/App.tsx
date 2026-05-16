@@ -54,6 +54,7 @@ import {
   deleteTemplate,
   patchProject,
 } from './state/projects';
+import type { ImportClaudeDesignResult } from './state/projects';
 import { useI18n } from './i18n';
 import { liveArtifactTabId } from './types';
 import type {
@@ -721,19 +722,25 @@ export function App() {
     [analytics.track],
   );
 
-  const handleImportClaudeDesign = useCallback(async (file: File) => {
-    const result = await importClaudeDesignZip(file);
-    if (!result) return;
-    setProjects((curr) => [
-      result.project,
-      ...curr.filter((p) => p.id !== result.project.id),
-    ]);
-    navigate({
-      kind: 'project',
-      projectId: result.project.id,
-      fileName: result.entryFile,
-    });
-  }, []);
+  const handleImportClaudeDesign = useCallback(
+    async (file: File): Promise<ImportClaudeDesignResult> => {
+      const result = await importClaudeDesignZip(file);
+      // Hand the failure back to the panel so it can show the daemon's
+      // reason — App must not swallow it with a bare `return`.
+      if (!result.ok) return result;
+      setProjects((curr) => [
+        result.project,
+        ...curr.filter((p) => p.id !== result.project.id),
+      ]);
+      navigate({
+        kind: 'project',
+        projectId: result.project.id,
+        fileName: result.entryFile,
+      });
+      return result;
+    },
+    [],
+  );
 
   const handleImportFolder = useCallback(async (baseDir: string) => {
     const result = await importFolderProject({ baseDir });

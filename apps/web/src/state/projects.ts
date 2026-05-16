@@ -81,9 +81,19 @@ export async function importFolderProject(
   }
 }
 
+// Discriminated outcome for the Claude Design ZIP import. Unlike the
+// fail-soft `null` helpers above, import is a deliberate user action: a
+// swallowed failure leaves the picker dialog closing with no project and
+// no message, which reads as a dead button. The `ok: false` arm carries
+// the daemon's own reason (`zip does not contain an HTML file`, etc.) so
+// the UI can surface it the same way the folder-import flow already does.
+export type ImportClaudeDesignResult =
+  | { ok: true; project: Project; conversationId: string; entryFile: string }
+  | { ok: false; message: string; details?: string };
+
 export async function importClaudeDesignZip(
   file: File,
-): Promise<{ project: Project; conversationId: string; entryFile: string } | null> {
+): Promise<ImportClaudeDesignResult> {
   try {
     const form = new FormData();
     form.append('file', file);
@@ -91,14 +101,36 @@ export async function importClaudeDesignZip(
       method: 'POST',
       body: form,
     });
-    if (!resp.ok) return null;
-    return (await resp.json()) as {
+    if (!resp.ok) {
+      // The daemon returns `{ error: String(err) }` (import-export-routes.ts);
+      // `String(new Error(...))` carries an `Error: ` prefix worth trimming.
+      // A non-JSON body (e.g. Express' default HTML 500 when multer errors
+      // bypass the route handler) falls back to the bare status.
+      let message = `Import failed (HTTP ${resp.status})`;
+      try {
+        const body = (await resp.json()) as { error?: unknown };
+        if (typeof body?.error === 'string' && body.error.trim()) {
+          message = body.error.replace(/^Error:\s*/, '').trim();
+        }
+      } catch {
+        // keep the status fallback
+      }
+      return { ok: false, message };
+    }
+    const json = (await resp.json()) as {
       project: Project;
       conversationId: string;
       entryFile: string;
     };
-  } catch {
-    return null;
+    return { ok: true, ...json };
+  } catch (err) {
+    return {
+      ok: false,
+      message:
+        err instanceof Error && err.message
+          ? err.message
+          : 'Could not reach the daemon to import the ZIP.',
+    };
   }
 }
 

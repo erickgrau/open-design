@@ -17,6 +17,7 @@ import { useT } from '../i18n';
 import type { Dict } from '../i18n/types';
 import { fetchPromptTemplate } from '../providers/registry';
 import { isStoredMediaProviderEntryPresent } from '../state/config';
+import type { ImportClaudeDesignResult } from '../state/projects';
 import type {
   AudioKind,
   DesignSystemSummary,
@@ -145,7 +146,7 @@ interface Props {
   onDeleteTemplate: (id: string) => Promise<boolean>;
   promptTemplates: PromptTemplateSummary[];
   onCreate: (input: CreateInput & { requestId?: string }) => void;
-  onImportClaudeDesign?: (file: File) => Promise<void> | void;
+  onImportClaudeDesign?: (file: File) => Promise<ImportClaudeDesignResult>;
   // Web fallback: the user types an absolute baseDir into the manual
   // input and the renderer POSTs `/api/import/folder` itself. Browser
   // builds have no `shell.openPath` surface, so the renderer naming a
@@ -230,6 +231,12 @@ export function NewProjectPanel({
   // gives the user a recovery hint instead of a silent no-op.
   // Shape: `{ message, details? }`. `null` means no toast.
   const [importFolderError, setImportFolderError] = useState<
+    { message: string; details?: string } | null
+  >(null);
+  // Same `{ message, details? }` Toast shape for the Claude Design ZIP
+  // import. Without this the import button is a dead end on failure:
+  // the picker closes, no project appears, and the user is told nothing.
+  const [importZipError, setImportZipError] = useState<
     { message: string; details?: string } | null
   >(null);
   const [tab, setTab] = useState<CreateTab>('prototype');
@@ -563,9 +570,25 @@ export function NewProjectPanel({
     const file = ev.target.files?.[0];
     ev.target.value = '';
     if (!file || !onImportClaudeDesign) return;
+    setImportZipError(null);
     setImporting(true);
     try {
-      await onImportClaudeDesign(file);
+      const result = await onImportClaudeDesign(file);
+      if (result && result.ok === false) {
+        setImportZipError({
+          message: result.message,
+          ...(result.details ? { details: result.details } : {}),
+        });
+      }
+    } catch (err) {
+      // A thrown handler (unexpected — the API path resolves an
+      // `ok: false` result) must still reach the user, never vanish.
+      setImportZipError({
+        message:
+          err instanceof Error && err.message
+            ? err.message
+            : 'Import failed unexpectedly.',
+      });
     } finally {
       setImporting(false);
     }
@@ -910,6 +933,14 @@ export function NewProjectPanel({
           details={importFolderError.details ?? null}
           ttlMs={6000}
           onDismiss={() => setImportFolderError(null)}
+        />
+      ) : null}
+      {importZipError ? (
+        <Toast
+          message={importZipError.message}
+          details={importZipError.details ?? null}
+          ttlMs={6000}
+          onDismiss={() => setImportZipError(null)}
         />
       ) : null}
     </div>
