@@ -7,9 +7,14 @@ const EOCD_SIG = 0x06054b50;
 const CENTRAL_SIG = 0x02014b50;
 const LOCAL_SIG = 0x04034b50;
 
+// Uncompressed-footprint ceilings for an imported Claude Design ZIP.
+// Sized to admit real exports that bundle images/video while still
+// bounding how much a single import can decode into memory. The
+// compressed-transfer ceiling lives separately on the multer
+// `importUpload` config (apps/daemon/src/server.ts).
 const MAX_FILES = 5000;
-const MAX_TOTAL_BYTES = 100 * 1024 * 1024;
-const MAX_FILE_BYTES = 25 * 1024 * 1024;
+export const MAX_TOTAL_BYTES = 512 * 1024 * 1024;
+export const MAX_FILE_BYTES = 128 * 1024 * 1024;
 
 type ZipEntry = {
   name: string;
