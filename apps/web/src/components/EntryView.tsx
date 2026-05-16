@@ -7,6 +7,7 @@ import {
   trackHomeViewPage,
 } from '../analytics/events';
 import { useT } from '../i18n';
+import type { ImportClaudeDesignResult } from '../state/projects';
 import {
   DEFAULT_AUDIO_MODEL,
   DEFAULT_IMAGE_MODEL,
@@ -70,7 +71,7 @@ interface Props {
   projectsLoading?: boolean;
   promptTemplatesLoading?: boolean;
   onCreateProject: (input: CreateInput & { pendingPrompt?: string }) => void;
-  onImportClaudeDesign: (file: File) => Promise<void> | void;
+  onImportClaudeDesign: (file: File) => Promise<ImportClaudeDesignResult>;
   onImportFolder?: (baseDir: string) => Promise<void> | void;
   onImportFolderResponse?: (response: ImportFolderResponse) => Promise<void> | void;
   onOpenProject: (id: string) => void;
