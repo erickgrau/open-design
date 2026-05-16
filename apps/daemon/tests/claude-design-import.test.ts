@@ -3,7 +3,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { deflateRawSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
-import { importClaudeDesignZip } from '../src/claude-design-import.js';
+import { importClaudeDesignZip, MAX_FILE_BYTES } from '../src/claude-design-import.js';
 
 function buildZip(
   entries: { name: string; body: Buffer; method?: 0 | 8; falsifyCentralUncompressed?: boolean }[],
@@ -134,7 +134,7 @@ describe('importClaudeDesignZip', () => {
     // The central directory cannot be trusted to enforce the per-file ceiling
     // for streaming zips. Build a fixture whose decoded payload is just barely
     // beyond the limit and confirm we still fail closed.
-    const oversized = Buffer.alloc(25 * 1024 * 1024 + 1, 0x61);
+    const oversized = Buffer.alloc(MAX_FILE_BYTES + 1, 0x61);
     const zip = buildZip([
       { name: 'index.html', body: Buffer.from('<html></html>') },
       {

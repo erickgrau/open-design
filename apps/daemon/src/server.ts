@@ -1850,7 +1850,12 @@ const importUpload = multer({
       );
     },
   }),
-  limits: { fileSize: 100 * 1024 * 1024 },
+  // Compressed-archive ceiling for Claude Design ZIP imports. Real
+  // exports that bundle images/video routinely clear the original
+  // 100 MB cap; 256 MB covers them with headroom. The post-decode
+  // ceilings in claude-design-import.ts (MAX_TOTAL_BYTES /
+  // MAX_FILE_BYTES) bound the uncompressed footprint separately.
+  limits: { fileSize: 256 * 1024 * 1024 },
 });
 
 // Project-scoped multi-file upload. Lands files directly in the project
