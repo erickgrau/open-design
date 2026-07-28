@@ -34,7 +34,7 @@
     "@open-design/sidecar": "workspace:*",
     "@open-design/sidecar-proto": "workspace:*",
     "lucide-react": "^1.14.0",
-    "next": "^16.2.5",
+    "next": "^16.2.11",
     "openai": "^6.36.0",
     "posthog-js": "^1.205.0",
     "react": "^18.3.1",
